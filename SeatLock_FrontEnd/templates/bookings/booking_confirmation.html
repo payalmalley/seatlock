@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}Booking #{{ booking.id }} - SeatLock{% endblock %}
+{% block content %}
+<div class="sl-success">
+  <div class="sl-tick">&#10003;</div>
+  {% if booking.status == "CONFIRMED" %}
+    <h1>You're all set!</h1>
+    <p style="color:var(--muted);margin:0">Your seats are locked in.</p>
+  {% else %}
+    <h1>Booking cancelled</h1>
+    <p style="color:var(--muted);margin:0">These seats were released.</p>
+  {% endif %}
+
+  <dl class="sl-ticket">
+    <dt>Booking</dt><dd>#{{ booking.id }}</dd>
+    <dt>Event</dt><dd>{{ booking.title }}</dd>
+    <dt>When</dt><dd>{{ booking.starts_at|date:"D, d M Y H:i" }}</dd>
+    <dt>Venue</dt><dd>{{ booking.venue }}</dd>
+    <dt>Seats</dt>
+    <dd><div class="sl-chips" style="margin-top:6px">{% for seat in booking.seats %}<span class="sl-chip">{{ seat }}</span>{% endfor %}</div></dd>
+  </dl>
+
+  <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
+    <a class="sl-btn" href="/my/bookings/">My bookings</a>
+    <a class="sl-btn sl-btn-ghost" href="/events/">More events</a>
+  </div>
+</div>
+{% endblock %}

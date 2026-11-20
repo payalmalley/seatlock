@@ -1,18 +1,69 @@
-.seat-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(56px, 1fr)); gap: 8px; max-width: 640px; }
-.seat-check { position: absolute; opacity: 0; pointer-events: none; }
+.sm-layout { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 32px; align-items: start; }
+@media (max-width: 960px) { .sm-layout { grid-template-columns: 1fr; } }
 
-.seat {
-  display: inline-flex; align-items: center; justify-content: center;
-  height: 44px; min-width: 56px; padding: 0 8px; border-radius: 8px;
-  font-size: .85rem; font-weight: 600; user-select: none; border: 2px solid transparent;
+.sm-head { margin-bottom: 28px; }
+.sm-head h1 { font-size: clamp(1.8rem, 3.5vw, 2.6rem); font-weight: 800; letter-spacing: -.03em; margin: 0 0 8px; }
+.sm-head .sl-meta { font-size: 1rem; flex-wrap: wrap; gap: 14px; }
+
+.sm-panel {
+  background: #fff; border: 1px solid var(--line); border-radius: 28px; padding: 32px;
 }
-.legend .seat { height: 32px; margin-right: 6px; }
 
-.seat-available { background: #d1e7dd; color: #0f5132; cursor: pointer; }
-.seat-held      { background: #fff3cd; color: #664d03; cursor: not-allowed; }
-.seat-mine      { background: #cfe2ff; color: #084298; border-color: #0d6efd; }
-.seat-booked    { background: #f8d7da; color: #842029; cursor: not-allowed; }
-.seat-blocked   { background: #dee2e6; color: #6c757d; cursor: not-allowed; text-decoration: line-through; }
+/* Stage */
+.sm-stage {
+  height: 46px; margin: 0 auto 36px; max-width: 70%;
+  background: linear-gradient(180deg, #fde7ef, #fff);
+  border-top: 5px solid var(--pink); border-radius: 50% 50% 0 0 / 100% 100% 0 0;
+  display: grid; place-items: center; color: var(--pink);
+  font-size: .72rem; font-weight: 800; letter-spacing: .3em; text-transform: uppercase;
+}
 
-.seat-check:checked + .seat-available { background: #198754; color: #fff; border-color: #0f5132; }
-.seat-check:disabled + .seat-available { cursor: not-allowed; opacity: .6; }
+/* Seats */
+.sm-rows { display: flex; flex-direction: column; gap: 12px; align-items: center; overflow-x: auto; padding-bottom: 6px; }
+.sm-row { display: flex; align-items: center; gap: 8px; }
+.sm-row-label { width: 22px; font-weight: 800; color: var(--muted); font-size: .85rem; text-align: center; }
+
+.seat-check { position: absolute; opacity: 0; pointer-events: none; }
+.seat {
+  width: 42px; height: 42px; border-radius: 12px; display: inline-flex; align-items: center; justify-content: center;
+  font-size: .72rem; font-weight: 700; user-select: none; border: 2px solid transparent;
+  transition: transform .12s, background .12s, border-color .12s, color .12s;
+}
+.seat-available { background: #fff; border-color: var(--line); color: var(--ink-soft); cursor: pointer; }
+.seat-available:hover { border-color: var(--pink); color: var(--pink); transform: translateY(-2px); }
+.seat-check:checked + .seat-available { background: var(--ink); border-color: var(--ink); color: #fff; transform: translateY(-2px); }
+.seat-check:focus-visible + .seat-available { outline: 3px solid var(--pink-soft); border-color: var(--pink); }
+.seat-check:disabled + .seat-available { opacity: .4; cursor: not-allowed; transform: none; border-color: var(--line); color: var(--ink-soft); }
+
+.seat-held    { background: #fff3d6; color: #8a5a00; cursor: not-allowed; }
+.seat-mine    { background: var(--pink); color: #fff; }
+.seat-booked  { background: #ececf0; color: #9a9aa6; cursor: not-allowed; }
+.seat-yours   { background: var(--green); color: #fff; }
+.seat-blocked {
+  background: repeating-linear-gradient(45deg, #f1f1f4, #f1f1f4 4px, #e4e4ea 4px, #e4e4ea 8px);
+  color: #b0b0ba; cursor: not-allowed;
+}
+
+/* Legend */
+.sm-legend { display: flex; flex-wrap: wrap; gap: 18px; justify-content: center; margin-top: 32px; padding-top: 24px; border-top: 1px solid var(--line); }
+.sm-legend span { display: inline-flex; align-items: center; gap: 8px; font-size: .8rem; font-weight: 600; color: var(--muted); }
+.sm-legend .seat { width: 20px; height: 20px; border-radius: 6px; border-width: 1.5px; }
+
+/* Summary sidebar */
+.sm-summary { position: sticky; top: 92px; }
+.sm-summary h2 { font-size: 1.15rem; font-weight: 800; margin: 0 0 18px; }
+.sm-summary .row-line { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px dashed var(--line); font-size: .92rem; }
+.sm-summary .row-line span:first-child { color: var(--muted); }
+.sm-summary .row-line span:last-child { font-weight: 700; text-align: right; }
+.sm-picked { display: flex; flex-wrap: wrap; gap: 6px; min-height: 34px; margin: 14px 0 20px; }
+.sm-picked .sl-chip { background: var(--ink); color: #fff; }
+.sm-picked em { color: var(--muted); font-style: normal; font-size: .88rem; }
+
+.sm-timer {
+  background: #fff6e0; border-radius: 18px; padding: 16px 18px; margin-bottom: 14px; text-align: center;
+}
+.sm-timer small { display: block; color: #7a5600; font-weight: 600; margin-bottom: 2px; }
+.sm-timer strong { font-size: 2rem; font-weight: 800; letter-spacing: .02em; color: #7a5600; font-variant-numeric: tabular-nums; }
+.sm-note { color: var(--muted); font-size: .82rem; margin: 12px 0 0; text-align: center; }
+.sm-actions { display: flex; flex-direction: column; gap: 10px; }
+.d-none { display: none !important; }

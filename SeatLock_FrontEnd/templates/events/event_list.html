@@ -1,18 +1,44 @@
 {% extends "base.html" %}
 {% block title %}Events - SeatLock{% endblock %}
 {% block content %}
-<h2 class="page-title">Events</h2>
-<div class="row g-3">
+<div class="sl-banner">
+  <span>Pick your seat, hold it for 5 minutes, confirm to lock it in.</span>
+</div>
+
+<section class="sl-hero">
+  <h1>Upcoming Events</h1>
+  <p>Browse campus events and reserve the exact seats you want.</p>
+</section>
+
+<div class="sl-search">
+  <input type="search" id="event-search" placeholder="Search events or venues" autocomplete="off">
+  <span class="sl-search-btn">&#9906;</span>
+</div>
+
+<div class="sl-grid" id="event-grid">
   {% for e in events %}
-  <div class="col-md-6 col-lg-4">
-    <div class="card h-100 p-3">
-      <h5>{{ e.title }}</h5>
-      <p class="text-muted mb-3">Starts: {{ e.starts_at|date:"d M Y, H:i" }}</p>
-      <a class="btn btn-primary mt-auto" href="/events/{{ e.id }}/">View seat map</a>
+  <article class="sl-card" data-search="{{ e.title|lower }} {{ e.venue|lower }}">
+    <div class="sl-card-cover {% cycle 'g0' 'g1' 'g2' 'g3' %}">
+      <div class="sl-date"><b>{{ e.starts_at|date:"d" }}</b><span>{{ e.starts_at|date:"M" }}</span></div>
+      {% if e.status|upper == "DRAFT" %}
+        <span class="sl-pill sl-pill-draft">Draft</span>
+      {% elif e.is_open %}
+        <span class="sl-pill sl-pill-open">Booking open</span>
+      {% else %}
+        <span class="sl-pill sl-pill-closed">Closed</span>
+      {% endif %}
     </div>
-  </div>
+    <div class="sl-card-body">
+      <h3 class="sl-card-title">{{ e.title }}</h3>
+      <div class="sl-meta">{{ e.venue }} &middot; {{ e.starts_at|date:"H:i" }}</div>
+      <div class="sl-progress"><div style="width: {% widthratio e.seats_available e.seats_total 100 %}%"></div></div>
+      <div class="sl-avail"><span>{{ e.seats_available }} of {{ e.seats_total }} seats left</span></div>
+      <a class="sl-btn" href="/events/{{ e.id }}/">{% if e.is_open %}Choose seats{% else %}View seat map{% endif %}</a>
+    </div>
+  </article>
   {% empty %}
-  <p class="text-muted">No events available.</p>
+  <p class="sl-empty">No events available.</p>
   {% endfor %}
 </div>
+<p class="sl-empty d-none" id="no-match">No events match your search.</p>
 {% endblock %}
