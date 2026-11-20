@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}Login - SeatLock{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-md-5 col-lg-4">
+    <div class="card p-4">
+      <h2 class="page-title text-center">SeatLock</h2>
+      {% if error %}<div class="alert alert-danger">{{ error }}</div>{% endif %}
+      <form method="post" action="/login/">
+        {% csrf_token %}
+        <input type="hidden" name="next" value="{{ next }}">
+        <div class="mb-3">
+          <label class="form-label" for="email">Email</label>
+          <input class="form-control" type="email" id="email" name="email" required autofocus>
+        </div>
+        <div class="mb-3">
+          <label class="form-label" for="password">Password</label>
+          <input class="form-control" type="password" id="password" name="password" required>
+        </div>
+        <button class="btn btn-primary w-100">Log in</button>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

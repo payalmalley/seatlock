@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}Dashboard - SeatLock{% endblock %}
+{% block content %}
+<h2 class="page-title">Welcome, {{ request.user.name }}</h2>
+<div class="row g-3">
+  <div class="col-md-4">
+    <a class="card p-4 text-decoration-none" href="/events/"><h5>Browse events</h5><p class="mb-0 text-muted">See published events and seat maps.</p></a>
+  </div>
+  {% if request.user.role == "STUDENT" %}
+  <div class="col-md-4">
+    <a class="card p-4 text-decoration-none" href="/my/bookings/"><h5>My bookings</h5><p class="mb-0 text-muted">View or cancel your bookings.</p></a>
+  </div>
+  {% endif %}
+  {% if request.user.role == "ORGANIZER" or request.user.role == "ADMIN" %}
+  <div class="col-md-4">
+    <a class="card p-4 text-decoration-none" href="/organizer/"><h5>My events</h5><p class="mb-0 text-muted">Edit events, block seats, check in attendees.</p></a>
+  </div>
+  {% endif %}
+  {% if request.user.role == "ADMIN" %}
+  <div class="col-md-4">
+    <a class="card p-4 text-decoration-none" href="/manage/"><h5>Admin</h5><p class="mb-0 text-muted">Users, bookings and audit logs.</p></a>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}
