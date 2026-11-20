@@ -1,6 +1,4 @@
 import json
-import uuid
-from datetime import datetime
 
 from django.db import connection
 
@@ -24,22 +22,10 @@ def writeAudit(user, action, event_id=None, details=None, actor_id=None):
     table = table_for(event_id, aid)  # from a fixed list, never user input
     with connection.cursor() as cur:
         cur.execute(
-            f"INSERT INTO {table} (id, actor_id, event_id, action, details, created_at) "
-            "VALUES (%s, %s, %s, %s, %s::jsonb, now())",
-            [str(uuid.uuid4()), aid, event_id, action, json.dumps(details or {}, default=str)],
+            f"INSERT INTO {table} (actor_id, event_id, action, details) "
+            "VALUES (%s, %s, %s, %s::jsonb)",   # id and created_at come from DB defaults
+            [aid, event_id, action, json.dumps(details or {}, default=str)],
         )
-
-
-def _encode(row):
-    return f"{row['created_at'].isoformat()}|{row['id']}"
-
-
-def _decode(cursor):
-    try:
-        ts, rid = cursor.split("|", 1)
-        return datetime.fromisoformat(ts), rid
-    except ValueError:
-        raise ValidationFailed("Bad cursor")
 
 
 def listAuditLogs(user, event_id=None, date_from=None, date_to=None, cursor=None, limit=50):
@@ -55,18 +41,20 @@ def listAuditLogs(user, event_id=None, date_from=None, date_to=None, cursor=None
     if date_to:
         conds.append("created_at < %s"); params.append(date_to)
     if cursor:
-        ts, rid = _decode(cursor)
-        conds.append("(created_at, id::text) < (%s, %s)"); params += [ts, rid]
+        try:
+            conds.append("id < %s"); params.append(int(cursor))
+        except ValueError:
+            raise ValidationFailed("Bad cursor")
     where = ("WHERE " + " AND ".join(conds)) if conds else ""
 
     rows = []
-    for i in shards:
+    for i in shards:   # ids come from one shared sequence, so id DESC is a valid global order
         rows += query(
             f"SELECT id, actor_id, event_id, action, details, created_at FROM audit_logs_{i} "
-            f"{where} ORDER BY created_at DESC, id::text DESC LIMIT %s",
-            params + [limit],
+            f"{where} ORDER BY id DESC LIMIT %s",
+            params + [limit + 1],
         )
-    rows.sort(key=lambda r: (r["created_at"], str(r["id"])), reverse=True)
+    rows.sort(key=lambda r: r["id"], reverse=True)
     page = rows[:limit]
-    next_cursor = _encode(page[-1]) if len(rows) > limit else None
+    next_cursor = str(page[-1]["id"]) if len(rows) > limit else None
     return {"logs": page, "next_cursor": next_cursor, "shards_queried": shards}

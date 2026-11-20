@@ -1,12 +1,12 @@
 from django.db import transaction
 
-from accounts.permissions import ADMIN, ORGANIZER, require_event_access, require_role
+from accounts.permissions import ADMIN, ORGANIZER, STUDENT, require_event_access, require_role
 from audit.services import writeAudit
 from bookings.locking import lock_seats, translate_db_errors
 from config.db import query, query_one
 from config.errors import Conflict, NotFound, ValidationFailed
 
-EDITABLE_FIELDS = {"title", "description", "starts_at"}   # whitelist = safe to put in SQL
+EDITABLE_FIELDS = {"title", "description", "venue", "starts_at"}   # whitelist = safe to put in SQL
 
 
 def _get_event(event_id, lock=False):
@@ -16,6 +16,25 @@ def _get_event(event_id, lock=False):
     if not ev:
         raise NotFound("Event not found")
     return ev
+
+
+def listEvents(user):
+    require_role(user, ADMIN, ORGANIZER, STUDENT)
+    where, params = "", []
+    if user.role == STUDENT:
+        where = "WHERE e.status = 'PUBLISHED'"
+    elif user.role == ORGANIZER:
+        where, params = "WHERE e.organizer_id = %s", [user.id]
+    return query(
+        f"""
+        SELECT e.id, e.title, e.venue, e.starts_at, e.status, (e.starts_at > now()) AS is_open,
+               (SELECT count(*) FROM seats s WHERE s.event_id = e.id AND s.status = 'AVAILABLE') AS seats_available,
+               (SELECT count(*) FROM seats s WHERE s.event_id = e.id) AS seats_total
+        FROM events e {where}
+        ORDER BY e.starts_at
+        """,
+        params,
+    )
 
 
 @translate_db_errors
@@ -33,7 +52,8 @@ def updateEvent(user, event_id, expected_version, changes):
                            current_version=ev["version"])
         sets = ", ".join(f"{k} = %s" for k in changes)
         row = query_one(
-            f"UPDATE events SET {sets}, version = version + 1 WHERE id = %s AND version = %s RETURNING version",
+            f"UPDATE events SET {sets}, version = version + 1, updated_at = now() "
+            "WHERE id = %s AND version = %s RETURNING version",
             list(changes.values()) + [event_id, expected_version])
         if not row:
             raise Conflict("Event was changed by someone else")
@@ -44,16 +64,19 @@ def updateEvent(user, event_id, expected_version, changes):
 @translate_db_errors
 def blockSeats(user, event_id, seat_ids):
     require_role(user, ORGANIZER, ADMIN)
-    ids = sorted({int(s) for s in seat_ids})
+    try:
+        ids = sorted({int(s) for s in seat_ids})
+    except (TypeError, ValueError):
+        raise ValidationFailed("Invalid seat ids")
     if not ids:
         raise ValidationFailed("No seats selected")
     with transaction.atomic():
         require_event_access(user, _get_event(event_id))
         lock_seats(event_id, ids)
         busy = query(
-            "SELECT seat_id FROM booking_seats bs JOIN bookings b ON b.id = bs.booking_id "
-            "WHERE b.status = 'CONFIRMED' AND bs.seat_id = ANY(%s) "
-            "UNION SELECT seat_id FROM holds WHERE seat_id = ANY(%s) AND expires_at > now()",
+            "SELECT id AS seat_id FROM seats WHERE id = ANY(%s) AND status = 'BOOKED' "
+            "UNION SELECT seat_id FROM holds "
+            "WHERE seat_id = ANY(%s) AND status = 'ACTIVE' AND expires_at > now()",
             [ids, ids])
         if busy:   # organizers cannot block booked (or currently held) seats
             raise Conflict("Some seats are booked or held",
@@ -68,14 +91,15 @@ def listEventBookings(user, event_id):
     require_event_access(user, _get_event(event_id))
     return query(
         """
-        SELECT b.id, b.status, b.checked_in_at, u.name, u.email,
-               array_agg(s.label ORDER BY s.id) FILTER (WHERE s.id IS NOT NULL) AS seats
+        SELECT b.id, b.status, b.checked_in_at, u.full_name AS name, u.email,
+               array_agg(s.row_label || s.seat_number::text ORDER BY s.row_label, s.seat_number)
+                   FILTER (WHERE s.id IS NOT NULL) AS seats
         FROM bookings b
         JOIN users u ON u.id = b.user_id
-        LEFT JOIN booking_seats bs ON bs.booking_id = b.id
+        LEFT JOIN booking_seats bs ON bs.booking_id = b.id AND bs.is_active
         LEFT JOIN seats s ON s.id = bs.seat_id
         WHERE b.event_id = %s
-        GROUP BY b.id, u.name, u.email
+        GROUP BY b.id, u.full_name, u.email
         ORDER BY b.id
         """,
         [event_id],
@@ -97,6 +121,7 @@ def checkIn(user, booking_id):
             raise Conflict("Only confirmed bookings can be checked in")
         if b["checked_in_at"] is not None:
             raise Conflict("Already checked in")
-        query("UPDATE bookings SET checked_in_at = now() WHERE id = %s", [booking_id])
+        query("UPDATE bookings SET checked_in_at = now(), checked_in_by = %s WHERE id = %s",
+              [user.id, booking_id])
         writeAudit(user, "CHECKIN", event_id=b["event_id"], details={"booking_id": booking_id})
     return {"booking_id": booking_id}

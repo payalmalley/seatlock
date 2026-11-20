@@ -12,6 +12,10 @@ class CurrentUser:
     name: str
     role: str
 
+    @property
+    def full_name(self):
+        return self.name
+
 
 def require_role(user, *roles):
     """Service-level check #2 (route middleware is check #1)."""

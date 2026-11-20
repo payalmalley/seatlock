@@ -1,4 +1,4 @@
-# Phase 2: database only. The Django "web" service is added in Phase 3.
+# Phase 3: database + Django web service.
 services:
   db:
     image: postgres:16
@@ -19,6 +19,21 @@ services:
       interval: 3s
       timeout: 3s
       retries: 20
+
+  web:
+    build: .
+    container_name: seatlock-web
+    env_file: .env
+    environment:
+      POSTGRES_HOST: db      # the db service name, not localhost
+      POSTGRES_PORT: 5432    # container-internal port, ignores the host mapping
+    ports:
+      - "8000:8000"
+    volumes:
+      - .:/app               # live code reload while developing
+    depends_on:
+      db:
+        condition: service_healthy
 
 volumes:
   seatlock_pgdata:
